@@ -1,0 +1,288 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+void transpose(double **x, double **y, int r, int c)
+{
+    int  i, j;
+    for (i = 0; i < r; i++)
+        for (j = 0; j < c; j++) {
+            y[j][i] = x[i][j];
+        }
+}
+void printmatrix(char *martixtype, double **x, int r, int c)
+{
+    int i,j;
+    //printf("%s\n", martixtype);
+    for (i = 0; i < r; i++)
+    {
+        for (j = 0; j < c; j++)
+            printf("%0.0f\n", x[i][j]);
+            //printf("%0.01lf ", x[i][j]);
+    }
+
+}
+void multiply(double **x, double **y, int xr, int xc, int yr, int yc, double **z)
+{
+    int  i, j, k;
+    int  zr=xr, zc=yc;
+
+    if (xc != yr) {
+            printf("Error :Not compatible for multiply\n");
+            return;
+    }
+    /*
+    z = (int **) malloc(zr * sizeof(int*));
+    for (j=0; j<zr; j++) {
+        z[j] = (int *) malloc(zc * sizeof(int));
+     }
+     */
+    for (i = 0; i < zr; i++) {
+        for (j = 0; j < zc; j++) {
+            z[i][j] = 0;
+            for(k=0;k<xc;k++) {
+                    z[i][j]+= x[i][k]* y[k][j];
+            }
+        }
+    }
+}
+
+void invert(double **x,double **inv, int order){
+     int i, j, k;
+     double ratio;
+
+     for (i=0; i<order; i++) {
+        for (j=0;j<order; j++) {
+                inv[i][j] =x[i][j];
+        }
+     }
+
+     for(i=0;i<order;i++){
+        for(j=0;j<order;j++){
+           if(i==j){
+             inv[i][j+order] = 1;
+           }else{
+             inv[i][j+order] = 0;
+           }
+        }
+     }
+
+     //printmatrix("Augmented", inv, r, ci);
+
+     for(i=0;i<order;i++){
+        if(inv[i][i] == 0.0){
+          printf("Mathematical Error : %d", i);
+          return;
+        }
+        for(j=0;j<order;j++){
+          if(i!=j){
+             ratio = inv[j][i]/inv[i][i];
+             for(k=0;k<2*order;k++){
+                inv[j][k] = inv[j][k] - ratio*inv[i][k];
+             }
+          }
+        }
+     }
+
+     for(i=0;i<order;i++){
+        for(j=order;j<2*order;j++){
+            inv[i][j] = inv[i][j]/inv[i][i];
+        }
+     }
+
+   //  printmatrix("Augmented/ Inverted", inv, order, 2*order);
+
+}
+
+int main(int argc, char *argv[])
+{
+    int rows_in, cols_in;
+    double **input_array;
+    char *trainfile, *testfile ;
+    int i, j, r = 3, c = 3, ri = 6, ci = 6;
+    double **x, **y, **xt, **p, **aug, **inv, **t1, **w, **res;
+    int xr,xc,yr,yc,xtr,xtc,pr,pc,augr,augc, invr, invc,t1r, t1c,wr, wc, resr, resc;
+
+    if(argc < 3){
+       printf("Invalid number of arguments\n");
+       return 1;
+    }
+    trainfile = argv[1];
+    testfile = argv[2];
+    FILE *trainfilefp = fopen(trainfile, "r");
+
+    fscanf(trainfilefp, "%d\n", &cols_in);
+    cols_in += 1;
+    fscanf(trainfilefp, "%d\n", &rows_in);
+    input_array = (double **) malloc(rows_in * sizeof(double*));
+    for (i=0; i<rows_in; i++) {
+        input_array[i] = (double *) malloc((cols_in) * sizeof(double));
+        for(j=0; j< cols_in; j++) {
+            fscanf(trainfilefp,"%lf,",&input_array[i][j]);
+        }
+     }
+    fclose (trainfilefp);
+   // printmatrix("Original Input",input_array, rows_in, cols_in);
+
+
+    xr = rows_in;
+    //xc = --cols_in;
+    xc = cols_in; 
+    x = (double **) malloc(xr * sizeof(double*));
+    for (i=0; i<xr; i++) {
+        x[i] = (double *) malloc(xc * sizeof(double));
+        x[i][0] = 1;
+        for (j=1;j<xc; j++) {
+        //for (j=0;j<xc; j++) {
+                x[i][j] =input_array[i][j];
+        //      x[i][j] =input_array[i][j+1];
+        }
+    }
+
+   /* xr = rows_in;
+    xc = --cols_in;
+    //xc = cols_in;
+    x = (double **) malloc(xr * sizeof(double*));
+    for (i=0; i<xr; i++) {
+        x[i] = (double *) malloc(xc * sizeof(double));
+    //    x[i][0] = 1;
+      //  for (j=1;j<xc; j++) {
+        for (j=0;j<xc; j++) {
+        //        x[i][j] =input_array[i][j];
+              x[i][j] =input_array[i][j+1];
+        }
+    }*/
+     //  printmatrix("\nOriginal X", x, xr, xc);
+
+    // OPEN TEST
+   /* double **t;
+    int tr,tc;
+    tr = rows_in;
+    tc = cols_in*2;
+    t = (double **) malloc(tr * sizeof(double*));
+    for (i=0; i<tr; i++) {
+        t[i] = (double *) malloc(tc * sizeof(double));
+    }
+    invert(x, t, xr );
+    printmatrix("\n====Augmented and Inverted X" , t, tr, tc);*/
+    // CLOSE TEST
+    yr = rows_in;
+    yc = 1;
+    y = (double **) malloc(yr * sizeof(double*));
+    for (i=0; i<yr; i++) {
+        y[i] = (double *) malloc(yc * sizeof(double));
+        for (j=0;j<yc; j++) {
+                y[i][j] =input_array[i][j];
+        }
+     }
+    for (i=0; i< rows_in; i++){
+       free( input_array[i]);
+    }
+    free( input_array);
+
+
+    //printmatrix("\nOriginal Y", y, yr, yc);
+    xtr = cols_in;
+    xtc  = rows_in;
+    xt = (double **) malloc(xtr * sizeof(double*));
+    for (i=0; i<xtr; i++) {
+        xt[i] = (double *) malloc(xtc * sizeof(double));
+    }
+    transpose(x, xt, xr, xc);
+    //printmatrix("\nTransposed", xt, xtr, xtc);
+
+    pr = cols_in;
+    pc = cols_in;
+    p = (double **) malloc(pr * sizeof(double*));
+    for (i=0; i<pr; i++) {
+        p[i] = (double *) malloc(pc * sizeof(double));
+     }
+    multiply(xt, x, xtr, xtc,xr,xc,p );
+    //printmatrix("Multiplied", p, pr, pc);
+
+    //printf("Doing Inversion\n");
+    augr = pr;
+    augc = pc*2;
+    aug = (double **) malloc(augr * sizeof(double*));
+    for (i=0; i<augr; i++) {
+        aug[i] = (double *) malloc(augc * sizeof(double));
+     }
+
+    invr = pr;
+    invc = pc;
+     inv = (double **) malloc(invr * sizeof(double*));
+     for (i=0; i<invr; i++) {
+        inv[i] = (double *) malloc(invc * sizeof(double));
+     }
+
+    invert(p, aug, pr);
+     for(i=0;i<invr;i++){
+        for(j=0;j<invc;j++){
+            inv[i][j] = aug[i][j+pc];
+        }
+     }
+   // printmatrix("Inverted", inv, invr, invc);
+
+    t1r = invr;
+    t1c = xtc;
+    t1 = (double **) malloc( t1r* sizeof(double*));
+    for (i=0; i<t1r; i++) {
+        t1[i] = (double *) malloc(t1c * sizeof(double));
+     }
+    multiply(inv, xt, invr, invc, xtr, xtc, t1 );
+    //printmatrix("Prod1", t1, t1r, t1c);
+
+    wr = invr;
+    wc = yc;
+    w = (double **) malloc( wr* sizeof(double*));
+    for (i=0; i<wr; i++) {
+        w[i] = (double *) malloc(wc * sizeof(double));
+     }
+    multiply(t1, y, t1r, t1c, yr, yc, w );
+   // printmatrix("\nw", w, wr, wc);
+
+    FILE *testfilefp = fopen(testfile, "r");
+    fscanf(testfilefp, "%d\n", &rows_in);
+    input_array = (double **) malloc(rows_in * sizeof(double*));
+    for (i=0; i<rows_in; i++) {
+        input_array[i] = (double *) malloc((cols_in) * sizeof(double));
+        input_array[i][0]=1;
+        for(j=1; j< cols_in; j++) {
+            fscanf(testfilefp,"%lf,",&input_array[i][j]);
+        }
+     }
+    fclose (testfilefp);
+   // printmatrix("\nTest data", input_array, rows_in, cols_in);
+
+    resr = rows_in;
+    resc = 1;
+    res = (double **) malloc( resr* sizeof(double*));
+    for (i=0; i<resr; i++) {
+        res[i] = (double *) malloc(resc * sizeof(double));
+     }
+    multiply(input_array, w, rows_in, cols_in, wr, wc,res );
+    //printmatrix("\nResult", res, resr, resc);
+    printmatrix("", res, resr, resc);
+
+
+    for (i=0; i< augr; i++)
+       free( aug[i]);
+    free( aug);
+  /* deallocate the array */
+  for (i=0; i<xr; i++)
+    free(x[i]);
+  free(x);
+
+  for (i=0; i<yr; i++)
+    free(y[i]);
+  free(y);
+
+  for (i=0; i<pr; i++)
+    free(p[i]);
+  free(p);
+
+  for (i=0; i<invr; i++)
+    free(inv[i]);
+  free(inv);
+
+    return 0;
+}
