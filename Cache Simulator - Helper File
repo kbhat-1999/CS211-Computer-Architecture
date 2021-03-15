@@ -1,0 +1,41 @@
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
+#include <stdlib.h>
+
+#define FIFO 1
+#define LRU 2
+#define DIRECT_MAP 1
+#define FULL_ASSOC 2
+#define SET_ASSOC 3
+#define MEMSIZE_BITS 48
+unsigned long long memReads=0, memWrites=0, cacheHits=0, cacheMisses=0;
+
+struct  cacheLine {
+    //short int  validBit ;
+  long tag;
+  struct cacheLine *next;
+};
+struct cacheLine **cacheSet;
+int numSets = 0;
+int linesPerSet = 0;
+long tagBit = 0, setBit = 0, blockBit = 0;
+long bitsToStoreSet = 0, bitsToStoreBlock = 0, bitsToStoreTag = 0;
+int cacheSize = 0;
+int blockSize = 0;
+int replacementPolicy  = 0;
+int  assocPolicy  = 0;
+long address = 0;
+long addressCount = 0;
+
+void print_usage();
+int initialize_cache (int , int );
+int print_cache (int , int );
+int find_set_tag_block_from_address(long , long * , long * , long * ) ;
+int search_block_in_cache (long , long);
+int update_set(int , long , long ,char);
+int process_input();
+void final_output();
+int printBinary(char *,  unsigned long );
+int powerOf2 (int );
+FILE *infile ;
