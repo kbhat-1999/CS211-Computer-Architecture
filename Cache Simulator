@@ -1,0 +1,472 @@
+#include "first.h"
+
+
+
+  int main (int argc, char* argv[]){
+
+    if (argc != 6) {
+
+      print_usage();
+      return 1;
+    }
+
+    char *traceFile = argv[5];
+
+    if (sscanf(argv[1],"%d",&cacheSize) == 0) {
+      printf("Invalid cache size \n");
+      return -1;
+    }
+    if (sscanf(argv[2],"%d",&blockSize) == 0) {
+      printf("Invalid cache size \n");
+      return -1;
+    }
+
+    if ((infile=fopen(traceFile, "r")) == NULL) {
+      printf("Invalid file or cannot open file\n");
+      return -1;
+    }
+
+          //checks if cache or block size is valid
+
+    if (cacheSize <= 0 || !powerOf2(cacheSize)) {
+      printf("Improper cache size\n");
+      return -1;
+    }
+
+    if (blockSize <= 0 || !powerOf2(blockSize) || cacheSize < blockSize)   {
+      printf("Improper block size\n");
+      return -1;
+    }
+
+          //checking if replacement policy is FIFO or LRU
+
+    if (strcmp(argv[3],"fifo") == 0) {
+      replacementPolicy = FIFO;
+    }
+    else if (strcmp(argv[3],"lru") == 0)  {
+      replacementPolicy = LRU;
+    }
+    else {
+      printf("Cache policy must be fifo or lru\n");
+      return -1;
+    }
+
+          //checking 
+
+      assocPolicy  = 0;;
+    if(strcmp(argv[4], "direct") == 0) {
+      assocPolicy  = DIRECT_MAP;
+                  linesPerSet = 1; // lines per set
+                  numSets = cacheSize / (blockSize*linesPerSet); // total number of sets
+                  
+                  
+                }
+                else if (strcmp(argv[4], "assoc") == 0) {
+                  assocPolicy  = FULL_ASSOC;
+                  numSets = 1;
+                  linesPerSet = cacheSize / blockSize;
+                  
+                  
+                }
+                else if (strstr(argv[4], "assoc:") != NULL) {
+                  assocPolicy  = SET_ASSOC;
+                  char argv4str[30];
+                  sscanf(argv[4],"%[^:]:%d", argv4str, &linesPerSet);
+                  if (strcmp(argv4str,"assoc") == 0) {
+                      if (!powerOf2(linesPerSet)) {
+                     printf("invalid associativity\n");
+                     return -1;
+                   }
+                   else {
+                     numSets = cacheSize / (blockSize * linesPerSet);
+                   }
+                 }
+                 else {
+                  printf("invalid associativity\n");
+                  return -1;
+                }
+              }
+              else {
+                printf("Associativity must be \n \
+                 direct - simulate a direct mapped cache.\n \
+                 assoc- simulate a fully associative cache.\n \
+                 assoc:n - simulate an n way associative cache. n will be a power of 2.\n");
+                return -1;
+              }
+
+             bitsToStoreBlock = ceil (log2(blockSize));
+             long x;
+          /* find blockBit */
+             x=0;
+             int i;
+       if (bitsToStoreBlock > 0) {
+                 for (i=0; i<bitsToStoreBlock;i++) {
+                  x<<=1;
+                  x=x | 1;
+                 }
+                 blockBit=x;
+       }
+       else
+     blockBit = 0;
+            
+          /* find setBit */
+            x=0;
+              bitsToStoreSet = ceil (log2(numSets));
+            if (bitsToStoreSet > 0)  {
+              for (i=0; i<bitsToStoreSet;i++) {
+                x<<=1;
+                x=x | 1;
+              }
+              x<<=(bitsToStoreBlock);
+              setBit =x ;
+      }
+            else {
+              bitsToStoreSet = 0;
+              setBit =0 ;
+      }
+
+            x=0;
+            bitsToStoreTag = MEMSIZE_BITS - bitsToStoreSet - bitsToStoreBlock;
+            for (i=0; i<bitsToStoreTag ;i++) {
+              x<<=1;
+              x=x | 1;
+            }
+            x<<=(bitsToStoreSet+bitsToStoreBlock);
+            tagBit =x ;
+
+/*
+            printf("Values for run \n");
+            printf("%s %s %s %s %s %s\n", argv[0], argv[1], argv[2], argv[3], argv[4], argv[5]);
+            printf("Cache Size : %d \n", cacheSize);
+            printf("Block Size : %d \n", blockSize);
+            printf("replacementPolicy : %d \n", replacementPolicy);
+            printf("associativity : %d \n", assocPolicy);
+            printf("\n======\n");
+            printf("block size=%d numSets=%d linesPerSet=%d \n", blockSize, numSets, linesPerSet);
+            printf("bitsToStoreBlock=%ld bitsToStoreSet=%ld bitsToStoreTag=%ld \n", bitsToStoreBlock, bitsToStoreSet, bitsToStoreTag);
+            printBinary("blockBit",blockBit); printf("\n");
+            printBinary("setBit  ",setBit); printf("\n");
+            printBinary("tagBit  ",tagBit); printf("\n");
+            printf("sizeofINT=%ld sizeofLONG=%ld sizeofUNSIGNEDINT=%ld sizeofUNSIGNEDLONG=%ld sizeofUNSIGNEDLONGLONG=%ld\n"  ,sizeof(int), sizeof(long), sizeof(unsigned int), sizeof(unsigned long), sizeof(unsigned long long));
+
+*/
+
+            if (initialize_cache (numSets,linesPerSet) != 0) {
+             printf("Could not initialize cache metadata\n");
+             return -2;
+           };
+           //print_cache (numSets,linesPerSet );
+           process_input(); 
+           final_output();
+           return 0;
+         }
+
+         void print_usage()
+         {
+          printf("Invalid command usage\n");
+          printf("Usage : \n");
+          printf ("first <cache size><block size><cache policy><associativity><trace file>\n \
+           where:\n \
+           A) <cache size>is the total size of the cache in bytes. This number should be a power of 2.\n \
+           B) <block size>is a power of 2 integer that specifies the size of the cache block in bytes.\n \
+           C) <cache policy>Here is valid cache policy is fifo or lru.\n \
+           D) <associativity>is one of:\n \
+           direct - simulate a direct mapped cache.\n \
+           assoc- simulate a fully associative cache.\n \
+           assoc:n - simulate an n way associative cache. n will be a power of 2.\n \
+           E) is the name of the trace file.\n ");
+        }
+
+        int  initialize_cache (int numSets, int linesPerSet )
+        {
+         int set, lines;
+         struct cacheLine *x;
+         cacheSet = malloc (numSets * sizeof(struct cacheLine *));
+         for (set =0 ; set < numSets; set++) {
+           cacheSet[set] = (struct cacheLine *) malloc (sizeof(struct cacheLine));
+           x = cacheSet[set];
+           x->tag=-1;
+           for (lines =1 ; lines <linesPerSet; lines++) {
+             x->next=(struct cacheLine *) malloc (sizeof(struct cacheLine));    
+             x= x->next;
+             x->tag=-1;
+           }
+           x->next = NULL;;
+         }
+         return 0;
+       }
+
+       int  print_cache (int numSets, int linesPerSet )
+       {
+         int set, lines;
+         struct cacheLine *x;
+         
+         printf("Printing Cache\n");
+         for (set =0 ; set < numSets; set++) {
+           x = cacheSet[set];
+           for (lines =0 ; lines < linesPerSet; lines++) {
+              // printf("%d %d %x\n",set,lines, (unsigned int )x);
+              // printf("set=%d line=%d tag=%ld validBit=%d\n", set, lines, x->tag, x->validBit);
+             printf("set=%d line=%d tag=%ld \n", set, lines, x->tag);
+             x= x->next;
+           }
+         }
+
+         return 0;
+       }
+
+
+       int find_set_tag_block_from_address(long addr, long *set, long *tag, long *block) 
+       {
+
+        *set = addr & setBit;
+        *set >>= bitsToStoreBlock;
+        *tag = addr & tagBit;
+        *tag >>= (bitsToStoreSet + bitsToStoreBlock);
+        *block = addr & blockBit;
+/*
+        printf("set=%ld tag=%ld block=%ld\n",*set, *tag, *block);
+        printBinary("\naddr    ", addr);
+        printBinary("\nsetBit  ",setBit); 
+        printBinary("\nset     ",  *set); 
+        printf("\n------\n");
+        printBinary("\naddr    ", addr);
+        printBinary("\ntagBit  ",tagBit); 
+        printBinary("\ntag     ", *tag);
+        printf("\n------\n");
+        printBinary("\naddr    ", addr);
+        printBinary("\nblockBit",blockBit); 
+        printBinary("\nblock   ", *block);
+*/
+        return 0;
+      }
+
+      int search_block_in_cache (long set, long tag)
+      {
+        int i;
+        struct cacheLine *x, *p;
+        
+        x =  cacheSet[set];
+        p = x;
+	if (p == x) {
+	  p=NULL;
+	}
+        for (i=0;i<linesPerSet; i++) {
+          if (x->tag == tag)  {
+            if (replacementPolicy == LRU) {
+              if (linesPerSet > 1) { /*make icurrent block first block and current first block second block*/
+		if ( p != NULL) {
+                  p->next = x->next;
+                  x->next = cacheSet[set];
+                  cacheSet[set] = x;
+		}
+	      }
+            }
+          return 0;
+          }
+          else {
+              p=x;
+              x=x->next;
+          }
+        }
+        return 1;
+      }
+
+
+      int update_set(int replacementPolicy, long set,long tag, char operation)
+      {
+        int i;
+        struct cacheLine *x,*p, *pp;
+
+        x =  cacheSet[set];
+        p =  NULL;
+        pp =  NULL;
+
+        if (replacementPolicy == FIFO) {
+          for (i=0;i<linesPerSet; i++) {
+		  /* NEW ALGO
+		   * Check if a match exists in first round of scan if so process as per replacement policy 
+		   * next chcek for empy spot , if found , process as per replacement policy
+		   * if both fail, remove per replacement polict.
+		   * For FIFO, first link is the last one in , so the end of the link is replaced and is replaced and on replacement moves to front.
+		   * For LRU, first link is the most recently used, so the end of the link if the lru and is replaced and on replacement moves to front.
+		   */
+            if (x->tag == -1)  { /* if empty slot found */
+              x->tag = tag;
+              if (operation == 'r')
+                memReads++;
+              else {
+                memReads++; 
+                memWrites++;
+              }
+	      if (linesPerSet > 1) {
+                  if (p != NULL) {
+		    p->next = x->next;
+                    x->next = cacheSet[set];
+                    cacheSet[set] = x;
+		  }
+	      }
+              return 0;
+            }
+            else {
+              pp=p;
+              p=x;
+              x=x->next;
+            }
+          }
+	  /* No empty line found , so replace the last one and move it to the front */
+          if (linesPerSet > 1) { 
+            /*use the last slot , make it the first one and push everything down . Last one in is at the front */
+            p->tag = tag;
+            //p->next = NULL;
+            p->next = cacheSet[set];
+            cacheSet[set] = p;
+	    pp->next =NULL;
+          }
+          else { /* direct mapped case */
+            cacheSet[set]->tag = tag;
+          }
+          if (operation == 'r') 
+            memReads++;
+          else {
+            memReads++; 
+            memWrites++;
+          }
+        }
+        else if (replacementPolicy == LRU) {
+          for (i=0;i<linesPerSet; i++) {
+            if (x->tag == -1)  {/* if empty slot found */
+              x->tag = tag;
+              if (linesPerSet > 1) {
+		/*make current slot first block and current first block second block*/
+		/* most recently used are in from and LRU are at end */
+		if (p != NULL) {
+	          p-> next = x->next;
+                  x->next = cacheSet[set];
+                  cacheSet[set] = x;
+		}
+              }
+              if (operation == 'r')
+                memReads++;
+              else {
+                memReads++;
+                memWrites++;
+              }
+              return 0;
+            }
+            else {
+              pp=p;
+              p=x;
+              x=x->next;
+            }
+          }
+	  /* No empty line found , so replace the last one and move it to the front */
+          if (linesPerSet > 1) {
+		  /* OLD 
+	    p-> next = NULL;
+            pp->next = cacheSet[set];
+            cacheSet[set] = p;
+            cacheSet[set]->tag = tag;*/
+            p->tag = tag;
+            p->next = cacheSet[set];
+            cacheSet[set] = p;
+          }
+          else {
+            cacheSet[set]->tag = tag;
+          }
+          if (operation == 'r')
+            memReads++;
+          else {
+            memReads++;
+            memWrites++;
+          }
+        }
+        return 0;
+      }
+
+      int process_input()
+      {
+        char command[30];
+        char *eptr;
+        long set=0, tag=0, block=0;
+        //while (fscanf(infile, "%s", command) != EOF){
+        while (fgets(command, 30, infile) != NULL){
+	  addressCount++;
+          command[strlen(command)-1]='\0';
+          //printf ("line=>%s\n", command);
+          if (strncmp(command, "R",1) == 0){
+           address = strtoul(command+2, &eptr, 16);
+           //printf ("Read from %s %lld\n", command+2, address);
+           find_set_tag_block_from_address(address, &set, &tag, &block) ;
+           if ( search_block_in_cache (set, tag) != 0) { /* not found */
+            cacheMisses++;
+            update_set(replacementPolicy, set, tag,'r');
+          }
+          else {
+            cacheHits++;
+          }
+          
+        }
+        else if (strncmp(command, "W",1) == 0) {
+         address = strtoul(command+2, &eptr, 16);
+         //printf ("Write to %s %lld\n", command+2, address);
+         find_set_tag_block_from_address(address, &set, &tag, &block) ;
+         if ( search_block_in_cache (set, tag) != 0) { /* not found */
+          cacheMisses++;
+          update_set(replacementPolicy, set, tag, 'w');
+         }
+         else {
+           memWrites++; // for the write thru cache 
+           cacheHits++;
+         }
+      }       
+      else if (strcmp(command, "#eof") == 0) {
+       break;
+     }
+      else {
+       //printf ("Unknown\n");
+       break;
+     }
+   }
+   fclose(infile);
+   return 0;
+  }
+
+  void final_output()
+  {
+    printf("Memory reads: %lld\n",memReads);
+    printf("Memory writes: %lld\n",memWrites);
+    printf("Cache hits: %lld\n",cacheHits);
+    printf("Cache misses: %lld\n",cacheMisses);
+  }
+
+  int printBinary(char *str,  unsigned long n)
+  {
+    char buffer[65];
+    int i=0;
+    for (i =0 ; i<65; i++) {
+      buffer[i] = '0';
+    }
+    buffer[64]='\0';
+    i=63;
+    while (n) {
+      if (n & 1)
+        buffer[i--] =  '1';
+      else
+        buffer[i--] =  '0';
+      n >>= 1;
+        //printf("%d %ld\n",i,n);
+    }
+    printf("%s=%s",str, buffer);
+    return 1;
+  }
+
+  int powerOf2 (int n) {
+    while (n != 1) {
+      if (n%2 != 0) {
+        return 0;
+      }
+      n = n / 2;
+    }
+    return 1;
+  }
